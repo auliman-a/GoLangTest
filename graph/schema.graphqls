@@ -1,0 +1,47 @@
+# GraphQL schema example
+#
+# https://gqlgen.com/getting-started/
+
+
+type Item {
+  sku: ID!
+  name: String!
+  price: Float!
+  quantity: Int!
+}
+
+input CartInput {
+  sku: ID!
+  quantity: Int!
+}
+
+input CheckoutInput {
+  totalPrice: Float!
+  cartItems: [CartInput!]!
+}
+
+type CartOutput {
+  sku: ID!
+  quantity: Int!
+  name: String!
+  amount: Float!
+}
+
+type Cart {
+  totalPrice: Float!
+  cartItems: [CartOutput!]!
+}
+
+type OrderResult {
+  sku: ID!
+  quantity: Int!
+}
+
+type Query {
+  getCartItems: Cart!
+}
+
+type Mutation {
+  addToCart(input: CartInput!): String!
+  checkout(input: [CheckoutInput!] ): [Cart]
+}
