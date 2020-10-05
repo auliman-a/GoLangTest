@@ -2,24 +2,11 @@ package model
 
 var (
 	InventoryData map[string]Item
-	CartItems     map[string]int
 	CartData      Cart
 )
 
-type CartDataModel struct {
-	TotalPrice float64
-	CartItems  []*CartOutputDataModel
-}
-
-type CartOutputDataModel struct {
-	Sku      string
-	Quantity int
-	Name     string
-	Amount   float64
-}
 
 func init() {
-	CartItems = make(map[string]int)
 
 	item1 := Item{
 		Sku:      "120P90",

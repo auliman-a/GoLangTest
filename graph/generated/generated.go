@@ -64,7 +64,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		AddToCart func(childComplexity int, input model.CartInput) int
-		Checkout  func(childComplexity int, input []*model.CheckoutInput) int
+		Checkout  func(childComplexity int) int
 	}
 
 	OrderResult struct {
@@ -73,16 +73,18 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		GetCartItems func(childComplexity int) int
+		GetCartItem      func(childComplexity int) int
+		GetInventoryData func(childComplexity int) int
 	}
 }
 
 type MutationResolver interface {
 	AddToCart(ctx context.Context, input model.CartInput) (string, error)
-	Checkout(ctx context.Context, input []*model.CheckoutInput) ([]*model.Cart, error)
+	Checkout(ctx context.Context) (*model.Cart, error)
 }
 type QueryResolver interface {
-	GetCartItems(ctx context.Context) (*model.Cart, error)
+	GetInventoryData(ctx context.Context) ([]*model.Item, error)
+	GetCartItem(ctx context.Context) (*model.Cart, error)
 }
 
 type executableSchema struct {
@@ -187,12 +189,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_checkout_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.Checkout(childComplexity, args["input"].([]*model.CheckoutInput)), true
+		return e.complexity.Mutation.Checkout(childComplexity), true
 
 	case "OrderResult.quantity":
 		if e.complexity.OrderResult.Quantity == nil {
@@ -208,12 +205,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.OrderResult.Sku(childComplexity), true
 
-	case "Query.getCartItems":
-		if e.complexity.Query.GetCartItems == nil {
+	case "Query.getCartItem":
+		if e.complexity.Query.GetCartItem == nil {
 			break
 		}
 
-		return e.complexity.Query.GetCartItems(childComplexity), true
+		return e.complexity.Query.GetCartItem(childComplexity), true
+
+	case "Query.getInventoryData":
+		if e.complexity.Query.GetInventoryData == nil {
+			break
+		}
+
+		return e.complexity.Query.GetInventoryData(childComplexity), true
 
 	}
 	return 0, false
@@ -319,12 +323,13 @@ type OrderResult {
 }
 
 type Query {
-  getCartItems: Cart!
+  getInventoryData: [Item]
+  getCartItem: Cart!
 }
 
 type Mutation {
   addToCart(input: CartInput!): String!
-  checkout(input: [CheckoutInput!] ): [Cart]
+  checkout: Cart!
 }`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
@@ -340,21 +345,6 @@ func (ec *executionContext) field_Mutation_addToCart_args(ctx context.Context, r
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 		arg0, err = ec.unmarshalNCartInput2githubᚗcomᚋaulimanᚑaᚋgolangᚑtestᚋgraphᚋmodelᚐCartInput(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["input"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_checkout_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 []*model.CheckoutInput
-	if tmp, ok := rawArgs["input"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-		arg0, err = ec.unmarshalOCheckoutInput2ᚕᚖgithubᚗcomᚋaulimanᚑaᚋgolangᚑtestᚋgraphᚋmodelᚐCheckoutInputᚄ(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -824,27 +814,23 @@ func (ec *executionContext) _Mutation_checkout(ctx context.Context, field graphq
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_checkout_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().Checkout(rctx, args["input"].([]*model.CheckoutInput))
+		return ec.resolvers.Mutation().Checkout(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.Cart)
+	res := resTmp.(*model.Cart)
 	fc.Result = res
-	return ec.marshalOCart2ᚕᚖgithubᚗcomᚋaulimanᚑaᚋgolangᚑtestᚋgraphᚋmodelᚐCart(ctx, field.Selections, res)
+	return ec.marshalNCart2ᚖgithubᚗcomᚋaulimanᚑaᚋgolangᚑtestᚋgraphᚋmodelᚐCart(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderResult_sku(ctx context.Context, field graphql.CollectedField, obj *model.OrderResult) (ret graphql.Marshaler) {
@@ -917,7 +903,7 @@ func (ec *executionContext) _OrderResult_quantity(ctx context.Context, field gra
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Query_getCartItems(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Query_getInventoryData(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -935,7 +921,39 @@ func (ec *executionContext) _Query_getCartItems(ctx context.Context, field graph
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().GetCartItems(rctx)
+		return ec.resolvers.Query().GetInventoryData(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Item)
+	fc.Result = res
+	return ec.marshalOItem2ᚕᚖgithubᚗcomᚋaulimanᚑaᚋgolangᚑtestᚋgraphᚋmodelᚐItem(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_getCartItem(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetCartItem(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2312,6 +2330,9 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "checkout":
 			out.Values[i] = ec._Mutation_checkout(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -2370,7 +2391,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Query")
-		case "getCartItems":
+		case "getInventoryData":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -2378,7 +2399,18 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_getCartItems(ctx, field)
+				res = ec._Query_getInventoryData(ctx, field)
+				return res
+			})
+		case "getCartItem":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_getCartItem(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -2751,11 +2783,6 @@ func (ec *executionContext) marshalNCartOutput2ᚖgithubᚗcomᚋaulimanᚑaᚋg
 	return ec._CartOutput(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNCheckoutInput2ᚖgithubᚗcomᚋaulimanᚑaᚋgolangᚑtestᚋgraphᚋmodelᚐCheckoutInput(ctx context.Context, v interface{}) (*model.CheckoutInput, error) {
-	res, err := ec.unmarshalInputCheckoutInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v interface{}) (float64, error) {
 	res, err := graphql.UnmarshalFloat(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -3069,7 +3096,7 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return graphql.MarshalBoolean(*v)
 }
 
-func (ec *executionContext) marshalOCart2ᚕᚖgithubᚗcomᚋaulimanᚑaᚋgolangᚑtestᚋgraphᚋmodelᚐCart(ctx context.Context, sel ast.SelectionSet, v []*model.Cart) graphql.Marshaler {
+func (ec *executionContext) marshalOItem2ᚕᚖgithubᚗcomᚋaulimanᚑaᚋgolangᚑtestᚋgraphᚋmodelᚐItem(ctx context.Context, sel ast.SelectionSet, v []*model.Item) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -3096,7 +3123,7 @@ func (ec *executionContext) marshalOCart2ᚕᚖgithubᚗcomᚋaulimanᚑaᚋgola
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalOCart2ᚖgithubᚗcomᚋaulimanᚑaᚋgolangᚑtestᚋgraphᚋmodelᚐCart(ctx, sel, v[i])
+			ret[i] = ec.marshalOItem2ᚖgithubᚗcomᚋaulimanᚑaᚋgolangᚑtestᚋgraphᚋmodelᚐItem(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -3109,35 +3136,11 @@ func (ec *executionContext) marshalOCart2ᚕᚖgithubᚗcomᚋaulimanᚑaᚋgola
 	return ret
 }
 
-func (ec *executionContext) marshalOCart2ᚖgithubᚗcomᚋaulimanᚑaᚋgolangᚑtestᚋgraphᚋmodelᚐCart(ctx context.Context, sel ast.SelectionSet, v *model.Cart) graphql.Marshaler {
+func (ec *executionContext) marshalOItem2ᚖgithubᚗcomᚋaulimanᚑaᚋgolangᚑtestᚋgraphᚋmodelᚐItem(ctx context.Context, sel ast.SelectionSet, v *model.Item) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
-	return ec._Cart(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalOCheckoutInput2ᚕᚖgithubᚗcomᚋaulimanᚑaᚋgolangᚑtestᚋgraphᚋmodelᚐCheckoutInputᚄ(ctx context.Context, v interface{}) ([]*model.CheckoutInput, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var vSlice []interface{}
-	if v != nil {
-		if tmp1, ok := v.([]interface{}); ok {
-			vSlice = tmp1
-		} else {
-			vSlice = []interface{}{v}
-		}
-	}
-	var err error
-	res := make([]*model.CheckoutInput, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNCheckoutInput2ᚖgithubᚗcomᚋaulimanᚑaᚋgolangᚑtestᚋgraphᚋmodelᚐCheckoutInput(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
+	return ec._Item(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {

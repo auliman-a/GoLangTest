@@ -38,10 +38,11 @@ type OrderResult {
 }
 
 type Query {
-  getCartItems: Cart!
+  getInventoryData: [Item]
+  getCartItem: Cart!
 }
 
 type Mutation {
   addToCart(input: CartInput!): String!
-  checkout(input: [CheckoutInput!] ): [Cart]
+  checkout: Cart!
 }
