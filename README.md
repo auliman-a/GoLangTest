@@ -8,4 +8,4 @@ Assumption:
 - Promotion will be applied in Checkout Process
 - Checkout Process will directly substract necessary quantity in Inventory
 
-Script to run Unit Test using Testify library: go test .\...\ -coverprofile=output_test
+Script to run Unit Test using Testify library: "go test .\...\ -coverprofile=output_test"
