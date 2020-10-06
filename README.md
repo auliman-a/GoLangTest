@@ -4,7 +4,7 @@ Graphql schema file is included in the repository (/graph/schema.graphqls)
 Example Scenarios mentioned is availaible in Unit Test
 
 Assumption: 
-- Promotion for Macbook Pro will not be applied if there is not enough Raspberry Pi
+- Promotion for Macbook Pro will not be applied if there is not enough Raspberry Pi in Inventory
 - Promotion will be applied in Checkout Process
 - Checkout Process will directly substract necessary quantity in Inventory
 
