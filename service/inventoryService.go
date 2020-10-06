@@ -27,6 +27,7 @@ func NewInventoryService(invenData map[string]model.Item, cart model.Cart) Inven
 	}
 }
 
+//Checkout process; will reduce quantity from Inventory Data
 func (service *inventoryService) Checkout() (*model.Cart, error) {
 	err := service.ValidateQuantity(service.cartData)
 	if err != nil {
@@ -40,11 +41,7 @@ func (service *inventoryService) Checkout() (*model.Cart, error) {
 	return &modelCartDataCopy, nil
 }
 
-// func (r *queryResolver) GetCartItems(ctx context.Context) (*model.Cart, error) {
-// 	CheckAndApplyPromotion()
-// 	return &model.CartData, nil
-// }
-
+//Compare checkout quantity with Inventory data
 func (service *inventoryService) ValidateQuantity(cart model.Cart) error {
 	for i := range cart.CartItems {
 		invenData := service.inventoryData[cart.CartItems[i].Sku]
@@ -55,6 +52,7 @@ func (service *inventoryService) ValidateQuantity(cart model.Cart) error {
 	return nil
 }
 
+//Update the Inventory quantity data
 func (service *inventoryService) ProcessInventory() {
 	for i := range service.cartData.CartItems {
 		invenData, _ := service.inventoryData[service.cartData.CartItems[i].Sku]
@@ -63,6 +61,7 @@ func (service *inventoryService) ProcessInventory() {
 	}
 }
 
+//Get list of item registered in Inventory data
 func (service *inventoryService) GetInventoryData() []*model.Item {
 	var inventoryData []*model.Item
 
@@ -74,10 +73,12 @@ func (service *inventoryService) GetInventoryData() []*model.Item {
 	return inventoryData
 }
 
+//Get list of items that has been registered to Cart
 func (service *inventoryService) GetCartItem() *model.Cart {
 	return &service.cartData
 }
 
+//Register ordered item to Cart
 func (service *inventoryService) AddItemToCart(input model.CartInput) error {
 	invenData := model.InventoryData[input.Sku]
 
@@ -101,6 +102,8 @@ func (service *inventoryService) AddItemToCart(input model.CartInput) error {
 	}
 	return nil
 }
+
+//Apply promotion
 func (service *inventoryService) CheckAndApplyPromotion() {
 	var cartCopies []model.CartOutput
 
@@ -112,19 +115,29 @@ func (service *inventoryService) CheckAndApplyPromotion() {
 	}
 
 	for i := range cartCopies {
-		if cartCopies[i].Sku == "43N23P" {
+		//Promotion will not be applied if Raspberry Pi quantity in inventory is enough
+		if cartCopies[i].Sku == "43N23P" && service.inventoryData["234234"].Quantity > 0 {
 			existCartItem := service.getCartItem("234234")
 			if existCartItem == nil {
+				quantityToAdd := 0
+				if service.inventoryData["234234"].Quantity >= cartCopies[i].Quantity {
+					quantityToAdd = cartCopies[i].Quantity
+				} else {
+					quantityToAdd = service.inventoryData["234234"].Quantity
+				}
 				cartItem := model.CartOutput{
 					Sku:      "234234",
-					Name:     model.InventoryData["234234"].Name,
-					Quantity: cartCopies[i].Quantity,
+					Name:     service.inventoryData["234234"].Name,
+					Quantity: quantityToAdd,
 					Amount:   0,
 				}
 				service.cartData.CartItems = append(service.cartData.CartItems, &cartItem)
 			} else {
 				if existCartItem.Quantity <= cartCopies[i].Quantity {
 					existCartItem.Amount = 0
+					if (cartCopies[i].Quantity-existCartItem.Quantity) != 0 && service.inventoryData["234234"].Quantity >= (existCartItem.Quantity+(cartCopies[i].Quantity-existCartItem.Quantity)) {
+						existCartItem.Quantity += (cartCopies[i].Quantity - existCartItem.Quantity)
+					}
 				} else {
 					existCartItem.Amount = model.InventoryData["234234"].Price * (float64(existCartItem.Quantity - cartCopies[i].Quantity))
 				}
@@ -146,6 +159,8 @@ func (service *inventoryService) CheckAndApplyPromotion() {
 		}
 	}
 }
+
+//Calculate Total Amount of the purchase
 func (service *inventoryService) CalculateTotalAmount() {
 	for i := range service.cartData.CartItems {
 		service.cartData.TotalPrice += service.cartData.CartItems[i].Amount
