@@ -1,6 +1,7 @@
 Site will be hosted on http://localhost:8080/
 
 Graphql schema file is included in the repository (/graph/schema.graphqls)
+
 Example Scenarios mentioned is availaible in Unit Test
 
 Assumption: 
