@@ -17,14 +17,14 @@ Graphql example:
 - Add to Cart
 
 ```bash
-mutation addToCart{
+mutation {
   addToCart(input:{sku: "43N23P", quantity: 1})
 }
 ```
 
 - Checkout
 ```bash
-mutation checkout{
+mutation {
   checkout{
     totalPrice
     cartItems{
@@ -39,8 +39,9 @@ mutation checkout{
 
 
 Additional graphql to check inventory data and current cart content
+- Get Inventory Data
 ```bash
-query getInventoryData{
+query {
   getInventoryData{
     sku
     name
@@ -48,8 +49,11 @@ query getInventoryData{
     quantity
   }
 }
+```
 
-query getCart {
+- Get Cart data
+```bash
+query {
   getCartItem {
     totalPrice
     cartItems {
